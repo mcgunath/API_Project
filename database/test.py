@@ -1,7 +1,7 @@
-import pymongo
+from pymongo import MongoClient
 
 # connecting to mongoclient (locally in this case)
-myclient = pymongo.MongoClient('mongodb://localhost:27017/')
+myclient = MongoClient('mongodb://localhost:27017/')
 
 # delete the entire database
 myclient.drop_database('database')
