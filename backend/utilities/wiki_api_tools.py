@@ -26,7 +26,6 @@ def get_all_pages_links(titles):
 
     # the links cannot all be retrieved in one call, so a followup request is required
     while continuation:
-        print("Check")
         response = requests.get(url)
         
         # close program if status is an error

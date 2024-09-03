@@ -12,7 +12,7 @@ mydb = myclient['database']
 # defining a collection
 mycol = mydb["customers"]
 
-# defining an row/item in the collection
+# defining a row/item in the collection
 mydict = { "name": "John", "address": "Highway 37" }
 
 # remove all rows from the collection
@@ -24,3 +24,5 @@ mycol.insert_one(mydict)
 # for printing all rows in the collection
 for item in mycol.find():
     print(item)
+    
+myclient.close()
