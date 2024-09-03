@@ -28,7 +28,7 @@ def search_call(search_query='pie', language_code='en', number_of_results=1):
     # make API call for searching
     response = requests.get(url, headers=headers, params=parameters)
 
-    # close program if search status is an error
+    # close program if status is an error
     if response.status_code >= 400:
         print(f'Error with Search Query ({response.status_code})')
         return []
@@ -38,19 +38,38 @@ def search_call(search_query='pie', language_code='en', number_of_results=1):
     return response['pages']
 
 def get_page_text(title):
-    url = f'https://api.wikimedia.org/core/v1/wikipedia/en/page/{title}'
-    response = requests.get(url, headers=headers)
-    # close program if search status is an error
+    url = f'https://en.wikipedia.org/w/index.php?title={title}&action=raw'
+    
+    # make API call for getting page text
+    response = requests.get(url)
+    
+    # close program if status is an error
     if response.status_code >= 400:
         print(f'Unexpected error with article call ({response.status_code})')
         return []
     
-    # convert the response to json, 'parse' encompasses the json
-    response = json.loads(response.text)
-    response = response['source']
-    response = re.sub("{{.*}}", "", response)
-    response = re.sub("==References==.*== Further reading ==", "== Further reading ==", response, flags=re.DOTALL)
-    #response = re.sub("\[\[^(\]).*\]\]", "", response)
-    #response = response.replace("[[", "")
-    #response = response.replace("]]", "")
+    # clean the wikitext so that it is readable
+    response = cleanup_page_text(response.text)
+
     return response
+
+def cleanup_page_text(text):
+
+    # Removes references section
+    # Removes external links
+    # Removes images/gallery
+    # Removes references/further readings
+    # Removes double curly brace enclosures
+    text = re.sub("==References==.*|==External links==.*|<gallery.*?</gallery>|<ref>.*?</ref>|{{.*?}}|<ref.*?/>", "", text, flags=re.DOTALL)
+    
+    # Removes file lines
+    text = re.sub("^(\[\[)?File.*", "", text, flags=re.MULTILINE)
+    
+    # Removes the square brackets and left side of words that go to other wikis
+    text = re.sub("\[\[([^\|\]\[]*\|([^\|\]\[]*))\]\]", "\g<2>", text, flags=re.DOTALL)
+    # Removes the square brackets of words that go to other wikis
+    text = re.sub("\[\[(.*?)\]\]", "\g<1>", text, flags=re.DOTALL)
+    
+    # Removes additional spaces
+    text = re.sub("\n\n\n+", "\n\n", text)
+    return text

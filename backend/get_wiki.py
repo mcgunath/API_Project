@@ -19,9 +19,6 @@ headers = {
 response = search_call()
 title = response[0]['key']
 
-print(get_page_text(title))
-
-# make API call for previously retrieved article title
 url = f'https://en.wikipedia.org/w/api.php?action=query&titles={title}|Pear&curtimestamp&prop=links&format=json'
 response = requests.get(url, headers=headers)
 
