@@ -18,37 +18,48 @@ headers = {
 }
 
 def get_all_pages_links(titles):
-    url = f'https://en.wikipedia.org/w/api.php?action=query&titles=Pie|Pear&prop=links&pllimit=max&format=json'
-    response = requests.get(url)
+    links = {}
+    continuation = True
+    # make titles usable in the url
+    url_titles = '|'.join(titles)
+    url = f'https://en.wikipedia.org/w/api.php?action=query&titles={url_titles}&prop=links&pllimit=max&format=json'
 
-    # close program if status is an error
-    if response.status_code >= 400:
-        print(f'Unexpected error with article call ({response.status_code})')
-        raise SystemExit
-
-    # convert the response to json
-    response = json.loads(response.text)
-
-    # check if more links can be obtained
-    continuation = response['continue'] if 'continue' in response else ''
-    
-    response = response['query']
-    pages = response['pages']
-    links = []
-
-    for pageid in pages:
-        page_links = pages[pageid]['links']
-        for link in page_links:
-            links.append(link['title'])
-
-    if continuation:
-        continuation = continuation['plcontinue']
-        url = f'https://en.wikipedia.org/w/api.php?action=query&titles=Pie|Pear&prop=links&pllimit=max&format=json&plcontinue={continuation}'
+    # the links cannot all be retrieved in one call, so a followup request is required
+    while continuation:
+        print("Check")
         response = requests.get(url)
+        
+        # close program if status is an error
+        if response.status_code >= 400:
+            print(f'Unexpected error with article call ({response.status_code})')
+            return {}
+        
+            # convert the response to json
+        response = json.loads(response.text)
+        
+        pages = response['query']['pages']
 
-    #response = json.loads(response.text)
-    links = list(set(links))
-    links.sort()
+        # loop for appending the links to each page title
+        for pageid in pages:
+            if 'links' not in pages[pageid]:
+                continue
+            page_links = pages[pageid]['links']
+            temp_list = []
+            for link in page_links:
+                temp_list.append(link['title'])
+            if pages[pageid]['title'] not in links:
+                links[pages[pageid]['title']] = temp_list
+            else:
+                links[pages[pageid]['title']] += temp_list
+                # removes duplicates from the list
+                links[pages[pageid]['title']] = list(set(links[pages[pageid]['title']]))
+                links[pages[pageid]['title']].sort()
+            
+        # check if more links can be obtained
+        continuation = response['continue']['plcontinue'] if 'continue' in response else ''
+        # recreate the url to be used at start of the loop
+        url = f'https://en.wikipedia.org/w/api.php?action=query&titles={url_titles}&prop=links&pllimit=max&format=json&plcontinue={continuation}'
+
     return links
 
 def get_page_text(title):
@@ -96,7 +107,7 @@ def search_call(search_query='pie', language_code='en', number_of_results=1):
     parameters = {'q': search_query, 'limit': number_of_results}
 
     # make API call for searching
-    response = requests.get(url, headers=headers, params=parameters)
+    response = requests.get(url, params=parameters)
 
     # close program if status is an error
     if response.status_code >= 400:
