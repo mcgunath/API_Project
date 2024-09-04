@@ -3,6 +3,8 @@ import requests
 import json
 import os
 import re
+import aioconsole
+import asyncio
 
 # load info from .env file
 load_dotenv()
@@ -61,6 +63,32 @@ def get_all_pages_links(titles):
 
     return links
 
+async def get_all_wiki_titles():
+    await asyncio.sleep(1)
+    global not_stopped
+    not_stopped = True
+    titles = []
+    continuation = True
+    url = f'https://en.wikipedia.org/w/api.php?action=query&list=allpages&aplimit=max&format=json'
+
+    while continuation and not_stopped:
+        response = requests.get(url)
+        # close program if status is an error
+        if response.status_code >= 400:
+            print(f'Unexpected error with article call ({response.status_code})')
+            return ""
+        
+        # convert the response to json
+        response = json.loads(response.text)
+        pages = response['query']['allpages']
+        for page in pages:
+            titles.append({'title': page['title'], 'pageid': page['pageid']})
+        
+        continuation = response['continue']['apcontinue'] if 'continue' in response else ''
+        url = f'https://en.wikipedia.org/w/api.php?action=query&list=allpages&aplimit=max&format=json&apcontinue={continuation}'  
+        await asyncio.sleep(0)
+    return titles, continuation
+
 def get_page_text(title):
     def cleanup_page_text(text):
         # Removes references/further reading section
@@ -118,3 +146,8 @@ def search_call(search_query='pie', language_code='en', number_of_results=1):
     
     # return the list of pages found
     return response['pages']
+
+async def stop_api_call():
+    global not_stopped
+    await aioconsole.ainput("Input anything to stop the program: ")
+    not_stopped = False
