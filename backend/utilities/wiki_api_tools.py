@@ -23,6 +23,8 @@ headers = {
     'User-Agent': f'{APP_NAME} ({WIKI_EMAIL})'
 }
 
+not_stopped = True
+
 def get_all_pages_links(titles):
     # where the page links will be stored
     links = {}
@@ -71,28 +73,26 @@ def get_all_pages_links(titles):
     return links
 
 async def get_all_wiki_titles():
-    # sleeping to give time for the initial intro message to show
-    await asyncio.sleep(1)
     global not_stopped
     
-    # setting this variable to be True so that the loop continues until the end or the user inputs anything
-    not_stopped = True
-    
-    # 'titles' is a temporary variable that stores the titles retrieved until they are put into the database
-    # 'return_titles' is the one that is returned at the end of the method
+    # the list of titles returned at the end of the method
     titles = []
-    return_titles = []
     
     # keeps the loop going if there is more to obtain from the call
     continuation = True
     url = f'https://en.wikipedia.org/w/api.php?action=query&list=allpages&aplimit=max&format=json'
 
-    loops = 0
     start = time.time()
+    
+    num_queries = 0
+    
+    # for running the url request in parallel
+    loop = asyncio.get_event_loop()
     
     # loop for getting all the wiki articles
     while continuation and not_stopped:
-        response = requests.get(url)
+        # await seems to slow down the request, consider adding 'await asyncio.sleep(0)' at the end of the loop instead
+        response = await loop.run_in_executor(None, requests.get, url)
         # close program if status is an error
         if response.status_code >= 400:
             print(f'Unexpected error with article call ({response.status_code})')
@@ -104,25 +104,22 @@ async def get_all_wiki_titles():
         for page in pages:
             titles.append({'title': page['title'], 'pageid': page['pageid']})
         
+        # check if more titles can be obtained
         continuation = response['continue']['apcontinue'] if 'continue' in response else ''
+        # recreate the url to be used at start of the loop
         url = f'https://en.wikipedia.org/w/api.php?action=query&list=allpages&aplimit=max&format=json&apcontinue={continuation}' 
-        loops += 1 
         
-        # saves the currently retrieved titles to the database
-        if loops % 10 == 0:
-            if add_to_collection(db_name=WIKI_DATABASE, collection_name=WIKI_COLLECTION, items=titles):
-                print("Saved to Database")
-                return_titles += titles
-                titles = []
-                
-        # allows the user to be able to input and stop the function from running continuously
-        await asyncio.sleep(0)
+        num_queries += 1
+        if num_queries % 10 == 0:
+            print ("\033[A                             \033[A")
+            print("Queries made:", num_queries)
         
     # adds any leftover titles that were missing when the loop was cut short
-    add_to_collection(db_name=WIKI_DATABASE, collection_name=WIKI_COLLECTION, items=titles)
-    return_titles += titles
+    if add_to_collection(db_name=WIKI_DATABASE, collection_name=WIKI_COLLECTION, items=titles):
+        print("Saved to Database")
+        
     end = time.time()
-    return return_titles, continuation, end - start
+    return titles, continuation, end - start
 
 def get_page_text(title):
     def cleanup_page_text(text):
@@ -184,5 +181,5 @@ def search_call(search_query='pie', language_code='en', number_of_results=1):
 
 async def stop_api_call():
     global not_stopped
-    await aioconsole.ainput("Input anything to stop the program:\n")
+    await aioconsole.ainput("Input anything to stop the program:\n\n")
     not_stopped = False

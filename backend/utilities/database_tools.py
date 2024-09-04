@@ -31,7 +31,7 @@ def clear_collection(db_name="empty", collection_name="empty"):
     except:
         print("Connection to MongoDB failed")
         return False
-
+        
 def get_collection_names(db_name="empty"):
     try:
         with MongoClient(MONGO_CONNECTION) as client:
@@ -59,6 +59,7 @@ def get_database_stats(db_name="empty"):
             stats_string += "\nNumber of Collections: " + str(stats["collections"])
             stats_string += "\nItems in Collections: " + str(stats["objects"])
             stats_string += "\nSize (MB): " + str(stats["dataSize"])
+            stats_string += "\nMB per 500 Items: " + str((stats["dataSize"] / stats["objects"]) * 500)
             stats_string += "\n======================================="
             return stats_string
     except:
