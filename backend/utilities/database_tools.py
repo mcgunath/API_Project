@@ -78,7 +78,7 @@ def print_collection(db_name="empty", collection_name="empty", max_items=10):
             for i, item in enumerate(col.find()):
                 if i == max_items:
                     break
-                print(f'\n{i+1}: ', item)
+                print(f'{i+1}: ', item)
             print("This collection has", col.count_documents({}), "documents.")
         return True
     except:

@@ -7,4 +7,5 @@ load_dotenv()
 WIKI_DATABASE = os.getenv('WIKI_DATABASE')
 WIKI_COLLECTION = os.getenv('WIKI_COLLECTION')
 
-clear_collection(db_name=WIKI_DATABASE, collection_name=WIKI_COLLECTION)
+if input("Enter 'CONFIRM' to delete the Wiki Collection: ") == "CONFIRM":
+    clear_collection(db_name=WIKI_DATABASE, collection_name=WIKI_COLLECTION)
