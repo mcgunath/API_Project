@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+from .database_tools import add_to_collection
 import requests
 import json
 import os
@@ -13,6 +14,8 @@ load_dotenv()
 WIKI_ACCESS_TOKEN = os.getenv('WIKI_ACCESS_TOKEN')
 APP_NAME = os.getenv('APP_NAME')
 WIKI_EMAIL = os.getenv('WIKI_EMAIL')
+WIKI_DATABASE = os.getenv('WIKI_DATABASE')
+WIKI_COLLECTION = os.getenv('WIKI_COLLECTION')
 
 headers = {
     'Authorization': f'Bearer {WIKI_ACCESS_TOKEN}',
@@ -68,10 +71,17 @@ async def get_all_wiki_titles():
     global not_stopped
     not_stopped = True
     titles = []
+    return_titles = []
     continuation = True
     url = f'https://en.wikipedia.org/w/api.php?action=query&list=allpages&aplimit=max&format=json'
 
+    loops = 0
     while continuation and not_stopped:
+        if loops % 10 == 0:
+            if add_to_collection(db_name=WIKI_DATABASE, collection_name=WIKI_COLLECTION, items=titles):
+                print("Saved to Database")
+                return_titles += titles
+                titles = []
         response = requests.get(url)
         # close program if status is an error
         if response.status_code >= 400:
@@ -85,9 +95,12 @@ async def get_all_wiki_titles():
             titles.append({'title': page['title'], 'pageid': page['pageid']})
         
         continuation = response['continue']['apcontinue'] if 'continue' in response else ''
-        url = f'https://en.wikipedia.org/w/api.php?action=query&list=allpages&aplimit=max&format=json&apcontinue={continuation}'  
+        url = f'https://en.wikipedia.org/w/api.php?action=query&list=allpages&aplimit=max&format=json&apcontinue={continuation}' 
+        loops += 1 
         await asyncio.sleep(0)
-    return titles, continuation
+    add_to_collection(db_name=WIKI_DATABASE, collection_name=WIKI_COLLECTION, items=titles)
+    return_titles += titles
+    return return_titles, continuation
 
 def get_page_text(title):
     def cleanup_page_text(text):

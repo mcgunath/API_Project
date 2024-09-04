@@ -8,7 +8,7 @@ load_dotenv()
 # assign values from .env file if they exist
 MONGO_CONNECTION = os.getenv('MONGO_CONNECTION')
 
-def add_to_collection(db_name="empty", collection_name="empty", items={}):
+def add_to_collection(db_name="empty", collection_name="empty", items=[]):
     try:
         with MongoClient(MONGO_CONNECTION) as client:
             db = client[db_name]
@@ -23,6 +23,8 @@ def clear_collection(db_name="empty", collection_name="empty"):
     try:
         with MongoClient(MONGO_CONNECTION) as client:
             db = client[db_name]
+            stats = db.command('collstats', collection_name)
+            print(stats['count'], "items were deleted.")
             col = db[collection_name]
             col.drop()
         return True
@@ -83,4 +85,5 @@ def print_collection(db_name="empty", collection_name="empty", max_items=10):
         print("Connection to MongoDB failed")
         return False
         
-        
+#async def save_progress():
+    
